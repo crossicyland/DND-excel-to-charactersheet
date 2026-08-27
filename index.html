@@ -1,0 +1,1101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DND 角色卡 A4 打印原型</title>
+  <style>
+    :root {
+      --paper-w: 210mm;
+      --paper-h: 297mm;
+      --ink: #202124;
+      --muted: #667085;
+      --line: rgba(20, 96, 160, 0.5);
+      --fill: rgba(33, 150, 243, 0.08);
+      --panel: #ffffff;
+      --page-shadow: 0 16px 38px rgba(15, 23, 42, 0.16);
+      --toolbar-h: 74px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+      color: var(--ink);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      background: #f3f6f8;
+      color: var(--ink);
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      min-height: var(--toolbar-h);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 22px;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid #e6ebf0;
+      box-shadow: 0 4px 18px rgba(15, 23, 42, 0.06);
+    }
+
+    .toolbar h1 {
+      margin: 0 0 3px 0;
+      font-size: 17px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .toolbar p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    button, .file-picker {
+      appearance: none;
+      border: 1px solid #cad5df;
+      background: #fff;
+      color: #1f2937;
+      border-radius: 9px;
+      padding: 9px 13px;
+      font-size: 13px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+
+    .file-picker input { display: none; }
+
+    button.primary {
+      border-color: #1f6feb;
+      background: #1f6feb;
+      color: #fff;
+      font-weight: 650;
+    }
+
+    button:active, .file-picker:active { transform: translateY(1px); }
+
+    .workspace {
+      padding: 28px 18px 48px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 22px;
+    }
+
+    .page-shell {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .page-label {
+      color: #475467;
+      font-size: 12px;
+      letter-spacing: 0.08em;
+    }
+
+    .sheet {
+      position: relative;
+      width: var(--paper-w);
+      height: var(--paper-h);
+      background: var(--panel);
+      overflow: hidden;
+      box-shadow: var(--page-shadow);
+      page-break-after: always;
+      break-after: page;
+    }
+
+    .sheet:last-of-type { page-break-after: auto; break-after: auto; }
+
+    .sheet-bg {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .slot {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: #155eef;
+      font-size: 10px;
+      line-height: 1.15;
+      font-weight: 600;
+      border: 1px dashed var(--line);
+      background: var(--fill);
+      border-radius: 3px;
+      overflow: hidden;
+      padding: 1mm;
+      white-space: pre-line;
+    }
+
+    .slot.small { font-size: 10px; }
+    .slot.long { justify-content: center; text-align: center; padding-left: 1mm; padding-right: 1mm; }
+    .slot.block { align-items: center; justify-content: center; text-align: center; padding: 2mm; }
+    .slot.round { border-radius: 999px; }
+    .slot.main-name { font-size: 12.5px; font-weight: 700; }
+    .slot.header-field { font-size: 12px; font-weight: 650; }
+    .slot.ability-score { font-size: 18px; font-weight: 800; padding-top: 6.8mm; align-items: center; }
+    .slot.stat-value { font-size: 14px; font-weight: 800; }
+    .slot.prof-value { font-size: 12px; font-weight: 800; }
+    .slot.save-score { font-size: 10px; font-weight: 700; padding: 0; }
+    .slot.hp-max { font-size: 12px; font-weight: 700; align-items: center; justify-content: center; padding-left: 1mm; padding-right: 1mm; }
+    .slot.skill-score { font-size: 10px; font-weight: 700; padding: 0; }
+    .slot.weapon-cell { font-size: 12px; font-weight: 650; padding: 0.5mm; }
+    .slot.weapon-name { justify-content: center; text-align: center; padding-left: 0.5mm; padding-right: 0.5mm; }
+    .slot.gp-value { font-size: 10px; font-weight: 750; padding: 0.5mm; }
+    .slot.equipment-value { align-items: flex-start; justify-content: flex-start; text-align: left; font-size: 12px; line-height: 1.2; font-weight: 500; padding: 1.4mm; }
+    .slot.other-proficiency-value { align-items: flex-start; justify-content: flex-start; text-align: left; font-size: 12px; line-height: 1.25; font-weight: 500; padding: 1.4mm; }
+    .slot.features-value { align-items: flex-start; justify-content: flex-start; text-align: left; font-size: 12px; line-height: 1.2; font-weight: 500; padding: 2mm; }
+    .slot.spell-header-value { font-size: 14px; font-weight: 800; }
+    .spell-section {
+      position: absolute;
+      border: 1px dashed var(--line);
+      background: rgba(33, 150, 243, 0.04);
+      border-radius: 3px;
+      overflow: hidden;
+      color: #155eef;
+    }
+    .spell-slot-count {
+      position: absolute;
+      left: 16%;
+      top: 2.1%;
+      width: 10%;
+      height: 9.2%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px dashed var(--line);
+      background: var(--fill);
+      border-radius: 3px;
+      font-size: 12px;
+      font-weight: 800;
+      color: #155eef;
+    }
+    .spell-slot-count::before { content: attr(data-field); opacity: 0.78; }
+    .spell-slot-count.has-value::before { display: none; }
+    .spell-list {
+      position: absolute;
+      left: 4.5%;
+      right: 4.5%;
+      top: 5.5%;
+      bottom: 3.5%;
+      display: flex;
+      flex-direction: column;
+      gap: 0.35mm;
+    }
+    .spell-section.has-slot .spell-list { top: 14%; }
+    .spell-row {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      text-align: left;
+      border: 1px dashed rgba(20, 96, 160, 0.32);
+      background: rgba(33, 150, 243, 0.035);
+      border-radius: 2px;
+      color: #155eef;
+      font-size: 10px;
+      line-height: 1.08;
+      font-weight: 560;
+      padding: 0 0.8mm;
+      overflow: hidden;
+      white-space: pre-wrap;
+    }
+    .spell-row::before { content: attr(data-field); opacity: 0.72; }
+    .spell-row.has-value { color: #111827; background: rgba(255, 255, 255, 0.08); border-color: rgba(20, 96, 160, 0.22); }
+    .spell-row.has-value::before { display: none; }
+    .editable-field {
+      cursor: text;
+      white-space: pre-wrap;
+      -webkit-user-modify: read-write-plaintext-only;
+    }
+    .spell-row.editable-field { white-space: nowrap; }
+    .editable-field:focus {
+      outline: 1.5px solid rgba(31, 111, 235, 0.55);
+      outline-offset: -1px;
+      background: rgba(255, 255, 255, 0.55);
+    }
+    .editable-field:focus::before { display: none; }
+
+    .slot::before {
+      content: attr(data-field);
+      opacity: 0.78;
+      white-space: normal;
+    }
+
+    .slot.has-value {
+      color: #111827;
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(20, 96, 160, 0.35);
+    }
+
+    .slot.has-value::before { display: none; }
+
+    .prof-dot {
+      position: absolute;
+      display: block;
+      border: 1px dashed var(--line);
+      background: var(--fill);
+      border-radius: 999px;
+      padding: 0;
+    }
+
+    .prof-dot.filled-dot {
+      border-color: #111827;
+      background: #111827;
+    }
+
+    body.hide-helpers .slot,
+    body.hide-helpers .prof-dot,
+    body.hide-helpers .spell-section,
+    body.hide-helpers .spell-row,
+    body.hide-helpers .spell-slot-count {
+      border-color: transparent;
+      background: transparent;
+    }
+
+    body.hide-helpers .slot:not(.has-value)::before,
+    body.hide-helpers .spell-row:not(.has-value)::before,
+    body.hide-helpers .spell-slot-count:not(.has-value)::before { color: transparent; }
+    body.hide-helpers .slot.has-value,
+    body.hide-helpers .spell-row.has-value,
+    body.hide-helpers .spell-slot-count.has-value { color: #111827; }
+    body.hide-helpers .prof-dot.filled-dot { background: #111827; border-color: #111827; }
+
+    .screen-note {
+      max-width: 210mm;
+      margin: 0 auto 4px;
+      color: #475467;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .status {
+      min-width: 160px;
+      color: #475467;
+      font-size: 12px;
+      text-align: right;
+    }
+
+    @page {
+      size: A4 portrait;
+      margin: 0;
+    }
+
+    @media print {
+      html, body {
+        width: 210mm;
+        margin: 0;
+        padding: 0;
+        background: #fff;
+      }
+
+      .toolbar, .page-label, .screen-note {
+        display: none !important;
+      }
+
+      .workspace {
+        display: block;
+        padding: 0;
+        margin: 0;
+      }
+
+      .page-shell {
+        display: block;
+        margin: 0;
+        padding: 0;
+      }
+
+      .sheet {
+        width: 210mm;
+        height: 297mm;
+        margin: 0;
+        padding: 0;
+        box-shadow: none;
+        overflow: hidden;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+
+      .slot,
+      .spell-section,
+      .spell-row,
+      .spell-slot-count {
+        border-color: transparent !important;
+        background: transparent !important;
+        color: transparent !important;
+      }
+
+      .slot:not(.has-value)::before,
+      .spell-row:not(.has-value)::before,
+      .spell-slot-count:not(.has-value)::before { display: none !important; }
+      .slot.has-value,
+      .spell-row.has-value,
+      .spell-slot-count.has-value { color: #111827 !important; }
+
+      .prof-dot {
+        border-color: transparent !important;
+        background: transparent !important;
+      }
+
+      .prof-dot.filled-dot {
+        border-color: #111827 !important;
+        background: #111827 !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="toolbar">
+    <div>
+      <h1>DND 角色卡 A4 打印原型 v2</h1>
+      <p>v2：支持导入角色 JSON 自动填充，也支持导出当前编辑状态 JSON，下次可继续导入编辑。</p>
+    </div>
+    <div class="actions">
+      <label class="file-picker">导入 JSON<input id="jsonUpload" type="file" accept=".json,application/json" /></label>
+      <button type="button" id="exportJson">导出 JSON</button>
+      <button type="button" id="clearData">清空填充</button>
+      <button type="button" id="toggleHelpers">隐藏定位层</button>
+      <button type="button" class="primary" onclick="window.print()">打印</button>
+      <span class="status" id="statusText">尚未载入 JSON</span>
+    </div>
+  </header>
+
+  <main class="workspace">
+    <p class="screen-note">打印建议：选择 A4、纵向、缩放 100%。如果浏览器有“页边距”选项，选“无”或“最小”。定位层只用于调试；打印时会隐藏边框和蓝色底色，保留已填入的文字和熟练圆点。</p>
+
+    <section class="page-shell">
+      <div class="page-label">PAGE 1 / 2 · 基础属性、战斗、装备、特性</div>
+      <article class="sheet" aria-label="角色卡第一页">
+        <img class="sheet-bg" src="assets/page_1.png" alt="DND 角色卡第一页背景" />
+
+        <div class="slot long main-name" data-field="角色名" data-fill="characterName" style="left: 8.5%; top: 9.2%; width: 32.5%; height: 2.9%;"></div>
+        <div class="slot small header-field" data-field="职业与等级" data-fill="classes" style="left: 43.2%; top: 7.3%; width: 17.5%; height: 2.5%;"></div>
+        <div class="slot small header-field" data-field="背景" data-fill="background" style="left: 61.8%; top: 7.3%; width: 14.9%; height: 2.5%;"></div>
+        <div class="slot small header-field" data-field="玩家名" data-fill="player" style="left: 76.9%; top: 7.3%; width: 15.0%; height: 2.5%;"></div>
+        <div class="slot small header-field" data-field="种族" data-fill="race" style="left: 43.2%; top: 10.7%; width: 17.5%; height: 2.5%;"></div>
+        <div class="slot small header-field" data-field="阵营" data-fill="alignment" style="left: 61.8%; top: 10.7%; width: 14.9%; height: 2.5%;"></div>
+        <div class="slot small" data-field="经验值（暂不填）" style="left: 76.9%; top: 10.7%; width: 15.0%; height: 2.5%;"></div>
+
+        <div class="slot" data-field="灵感（暂不填）" style="left: 14.1%; top: 16.8%; width: 5.0%; height: 3.0%;"></div>
+        <div class="slot prof-value" data-field="熟练加值" data-fill="profBonus" style="left: 14.1%; top: 21.4%; width: 5.0%; height: 3.1%;"></div>
+
+        <span class="prof-dot" data-save-prof="str" style="left: 15.6%; top: 26.75%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot save-score" data-field="力量豁免" data-save-score="str" style="left: 16.0%; top: 26.50%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-save-prof="dex" style="left: 15.6%; top: 28.35%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot save-score" data-field="敏捷豁免" data-save-score="dex" style="left: 16.0%; top: 28.10%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-save-prof="con" style="left: 15.6%; top: 29.95%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot save-score" data-field="体质豁免" data-save-score="con" style="left: 16.0%; top: 29.70%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-save-prof="int" style="left: 15.6%; top: 31.55%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot save-score" data-field="智力豁免" data-save-score="int" style="left: 16.0%; top: 31.30%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-save-prof="wis" style="left: 15.6%; top: 33.15%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot save-score" data-field="感知豁免" data-save-score="wis" style="left: 16.0%; top: 32.90%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-save-prof="cha" style="left: 15.6%; top: 34.75%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot save-score" data-field="魅力豁免" data-save-score="cha" style="left: 16.0%; top: 34.50%; width: 4.0%; height: 1.2%;"></div>
+        <div class="slot hp-max" data-field="被动洞察" data-fill="passivePerception" style="left: 3.0%; top: 72.1%; width: 5.0%; height: 2.4%;"></div>
+        <div class="slot other-proficiency-value" data-field="其他熟练与语言" data-fill="otherProficiencies" style="left: 3.6%; top: 76.4%; width: 29.5%; height: 17.3%;"></div>
+
+        <div class="slot ability-score" data-field="力量" data-fill="ability.str" style="left: 4.6%; top: 18.2%; width: 6.4%; height: 6.5%;"></div>
+        <div class="slot ability-score" data-field="敏捷" data-fill="ability.dex" style="left: 4.6%; top: 26.5%; width: 6.4%; height: 6.5%;"></div>
+        <div class="slot ability-score" data-field="体质" data-fill="ability.con" style="left: 4.6%; top: 35.2%; width: 6.4%; height: 6.5%;"></div>
+        <div class="slot ability-score" data-field="智力" data-fill="ability.int" style="left: 4.6%; top: 43.8%; width: 6.4%; height: 6.5%;"></div>
+        <div class="slot ability-score" data-field="感知" data-fill="ability.wis" style="left: 4.6%; top: 52.2%; width: 6.4%; height: 6.5%;"></div>
+        <div class="slot ability-score" data-field="魅力" data-fill="ability.cha" style="left: 4.6%; top: 60.5%; width: 6.4%; height: 6.5%;"></div>
+
+        <span class="prof-dot" data-skill-prof="运动" style="left: 15.6%; top: 40.45%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot skill-score" data-field="运动" data-skill-total="运动" style="left: 16.0%; top: 40.15%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-skill-prof="特技" style="left: 15.6%; top: 42.10%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot skill-score" data-field="特技" data-skill-total="特技" style="left: 16.0%; top: 41.80%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-skill-prof="巧手" style="left: 15.6%; top: 43.75%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot skill-score" data-field="巧手" data-skill-total="巧手" style="left: 16.0%; top: 43.45%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-skill-prof="隐匿" style="left: 15.6%; top: 45.35%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot skill-score" data-field="隐匿" data-skill-total="隐匿" style="left: 16.0%; top: 45.05%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-skill-prof="奥秘" style="left: 15.6%; top: 46.89%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot skill-score" data-field="奥秘" data-skill-total="奥秘" style="left: 16.0%; top: 46.65%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-skill-prof="历史" style="left: 15.6%; top: 48.50%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot skill-score" data-field="历史" data-skill-total="历史" style="left: 16.0%; top: 48.05%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-skill-prof="自然" style="left: 15.6%; top: 50.11%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot skill-score" data-field="自然" data-skill-total="自然" style="left: 16.0%; top: 49.80%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-skill-prof="宗教" style="left: 15.6%; top: 51.70%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot skill-score" data-field="宗教" data-skill-total="宗教" style="left: 16.0%; top: 51.30%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-skill-prof="调查" style="left: 15.6%; top: 53.10%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot skill-score" data-field="调查" data-skill-total="调查" style="left: 16.0%; top: 52.90%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-skill-prof="驯兽" style="left: 15.6%; top: 54.90%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot skill-score" data-field="驯兽" data-skill-total="驯兽" style="left: 16.0%; top: 54.70%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-skill-prof="洞悉" style="left: 15.6%; top: 56.50%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot skill-score" data-field="洞悉" data-skill-total="洞悉" style="left: 16.0%; top: 56.30%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-skill-prof="医药" style="left: 15.6%; top: 58.10%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot skill-score" data-field="医药" data-skill-total="医药" style="left: 16.0%; top: 57.90%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-skill-prof="察觉" style="left: 15.6%; top: 59.65%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot skill-score" data-field="察觉" data-skill-total="察觉" style="left: 16.0%; top: 59.45%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-skill-prof="求生" style="left: 15.6%; top: 61.25%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot skill-score" data-field="求生" data-skill-total="求生" style="left: 16.0%; top: 61.05%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-skill-prof="欺瞒" style="left: 15.6%; top: 62.90%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot skill-score" data-field="欺瞒" data-skill-total="欺瞒" style="left: 16.0%; top: 62.70%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-skill-prof="威吓" style="left: 15.6%; top: 64.50%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot skill-score" data-field="威吓" data-skill-total="威吓" style="left: 16.0%; top: 64.30%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-skill-prof="表演" style="left: 15.6%; top: 66.00%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot skill-score" data-field="表演" data-skill-total="表演" style="left: 16.0%; top: 65.80%; width: 4.0%; height: 1.2%;"></div>
+        <span class="prof-dot" data-skill-prof="游说" style="left: 15.6%; top: 67.50%; width: 1.0%; height: 0.75%;"></span>
+        <div class="slot skill-score" data-field="游说" data-skill-total="游说" style="left: 16.0%; top: 67.30%; width: 4.0%; height: 1.2%;"></div>
+
+        <div class="slot small stat-value" data-field="AC" data-fill="ac" style="left: 36.8%; top: 18.5%; width: 7.0%; height: 4.8%;"></div>
+        <div class="slot small stat-value" data-field="先攻" data-fill="initiative" style="left: 45.8%; top: 18.5%; width: 7.5%; height: 4.8%;"></div>
+        <div class="slot small stat-value" data-field="速度" data-fill="speed" style="left: 55.8%; top: 18.5%; width: 7.5%; height: 4.8%;"></div>
+        <div class="slot hp-max" data-field="最大生命值" data-fill="hpMax" style="left: 36.2%; top: 25.3%; width: 27.3%; height: 1.7%;"></div>
+        <div class="slot" data-field="当前生命值（暂不填）" style="left: 36.2%; top: 26.6%; width: 27.3%; height: 4.2%;"></div>
+        <div class="slot" data-field="临时生命值（暂不填）" style="left: 36.2%; top: 32.9%; width: 27.3%; height: 4.8%;"></div>
+        <div class="slot hp-max" data-field="生命骰" data-fill="hitDiceMax" style="left: 36.1%; top: 40.0%; width: 13.2%; height: 1.1%;"></div>
+        <div class="slot small" data-field="死亡豁免（暂不填）" style="left: 50.1%; top: 40.2%; width: 13.4%; height: 4.1%;"></div>
+
+        <div class="slot weapon-cell weapon-name" data-field="武器1名称" data-weapon="0" data-weapon-field="name" style="left: 36.2%; top: 48.2%; width: 10.8%; height: 2.2%;"></div>
+        <div class="slot weapon-cell" data-field="武器1命中" data-weapon="0" data-weapon-field="attack" style="left: 47.8%; top: 48.2%; width: 5.2%; height: 2.2%;"></div>
+        <div class="slot weapon-cell weapon-name" data-field="武器1伤害/类型" data-weapon="0" data-weapon-field="damage" style="left: 54.0%; top: 48.2%; width: 9.4%; height: 2.2%;"></div>
+        <div class="slot weapon-cell weapon-name" data-field="武器2名称" data-weapon="1" data-weapon-field="name" style="left: 36.2%; top: 50.8%; width: 10.8%; height: 2.2%;"></div>
+        <div class="slot weapon-cell" data-field="武器2命中" data-weapon="1" data-weapon-field="attack" style="left: 47.8%; top: 50.8%; width: 5.2%; height: 2.2%;"></div>
+        <div class="slot weapon-cell weapon-name" data-field="武器2伤害/类型" data-weapon="1" data-weapon-field="damage" style="left: 54.0%; top: 50.8%; width: 9.4%; height: 2.2%;"></div>
+        <div class="slot weapon-cell weapon-name" data-field="武器3名称" data-weapon="2" data-weapon-field="name" style="left: 36.2%; top: 53.3%; width: 10.8%; height: 2.2%;"></div>
+        <div class="slot weapon-cell" data-field="武器3命中" data-weapon="2" data-weapon-field="attack" style="left: 47.8%; top: 53.3%; width: 5.2%; height: 2.2%;"></div>
+        <div class="slot weapon-cell weapon-name" data-field="武器3伤害/类型" data-weapon="2" data-weapon-field="damage" style="left: 54.0%; top: 53.3%; width: 9.4%; height: 2.2%;"></div>
+        <div class="slot weapon-cell weapon-name" data-field="武器4名称" data-weapon="3" data-weapon-field="name" style="left: 36.2%; top: 55.9%; width: 10.8%; height: 2.2%;"></div>
+        <div class="slot weapon-cell" data-field="武器4命中" data-weapon="3" data-weapon-field="attack" style="left: 47.8%; top: 55.9%; width: 5.2%; height: 2.2%;"></div>
+        <div class="slot weapon-cell weapon-name" data-field="武器4伤害/类型" data-weapon="3" data-weapon-field="damage" style="left: 54.0%; top: 55.9%; width: 9.4%; height: 2.2%;"></div>
+        <div class="slot gp-value" data-field="GP" data-fill="gp" style="left: 37.0%; top: 82.2%; width: 5.7%; height: 2.1%;"></div>
+        <div class="slot equipment-value" data-field="装备" data-fill="equipment" style="left: 43.2%; top: 71.8%; width: 20.8%; height: 20.7%;"></div>
+
+        <div class="slot block small" data-field="个性" data-fill="personality" style="left: 67.7%; top: 18.4%; width: 27.0%; height: 6.2%;"></div>
+        <div class="slot block small" data-field="理想" data-fill="ideals" style="left: 67.7%; top: 26.5%; width: 27.0%; height: 4.3%;"></div>
+        <div class="slot block small" data-field="纽带" data-fill="bonds" style="left: 67.7%; top: 33.3%; width: 27.0%; height: 4.3%;"></div>
+        <div class="slot block small" data-field="缺陷" data-fill="flaws" style="left: 67.7%; top: 39.8%; width: 27.0%; height: 4.3%;"></div>
+        <div class="slot block features-value" data-field="特性与能力" data-fill="features" style="left: 66.6%; top: 47.4%; width: 28.9%; height: 46.3%;"></div>
+      </article>
+    </section>
+
+    <section class="page-shell">
+      <div class="page-label">PAGE 2 / 2 · 施法职业、关键属性、法术列表</div>
+      <article class="sheet" aria-label="角色卡第二页">
+        <img class="sheet-bg" src="assets/page_2.png" alt="DND 角色卡第二页背景" />
+
+        <div class="slot spell-header-value" data-field="施法职业" data-fill="spellClass" style="left: 8.4%; top: 11.0%; width: 32.6%; height: 2.8%;"></div>
+        <div class="slot spell-header-value" data-field="关键施法属性" data-fill="spellAbility" style="left: 43.5%; top: 9.9%; width: 14.6%; height: 3.8%;"></div>
+        <div class="slot spell-header-value" data-field="法术豁免 DC" data-fill="spellSaveDC" style="left: 60.5%; top: 9.9%; width: 14.5%; height: 3.8%;"></div>
+        <div class="slot spell-header-value" data-field="法术攻击加值" data-fill="spellAttackBonus" style="left: 77.3%; top: 9.9%; width: 14.6%; height: 3.8%;"></div>
+
+        <div class="spell-section" data-spell-section="0" data-rows="8" style="left: 4.7%; top: 22.6%; width: 31.2%; height: 14.9%;"></div>
+        <div class="spell-section" data-spell-section="1" data-rows="13" style="left: 4.7%; top: 39.9%; width: 31.2%; height: 25.7%;"><div class="spell-slot-count" data-field="1环法术位" data-spell-slot="1"></div></div>
+        <div class="spell-section" data-spell-section="2" data-rows="13" style="left: 4.7%; top: 66.3%; width: 31.2%; height: 25.7%;"><div class="spell-slot-count" data-field="2环法术位" data-spell-slot="2"></div></div>
+
+        <div class="spell-section" data-spell-section="3" data-rows="13" style="left: 36.0%; top: 20.2%; width: 31.2%; height: 25.7%;"><div class="spell-slot-count" data-field="3环法术位" data-spell-slot="3"></div></div>
+        <div class="spell-section" data-spell-section="4" data-rows="13" style="left: 36.0%; top: 46.4%; width: 31.2%; height: 25.6%;"><div class="spell-slot-count" data-field="4环法术位" data-spell-slot="4"></div></div>
+        <div class="spell-section" data-spell-section="5" data-rows="9" style="left: 36.0%; top: 73.7%; width: 31.2%; height: 18.2%;"><div class="spell-slot-count" data-field="5环法术位" data-spell-slot="5"></div></div>
+
+        <div class="spell-section" data-spell-section="6" data-rows="9" style="left: 67.2%; top: 21.0%; width: 31.2%; height: 18.3%;"><div class="spell-slot-count" data-field="6环法术位" data-spell-slot="6"></div></div>
+        <div class="spell-section" data-spell-section="7" data-rows="9" style="left: 67.2%; top: 40.8%; width: 31.2%; height: 18.4%;"><div class="spell-slot-count" data-field="7环法术位" data-spell-slot="7"></div></div>
+        <div class="spell-section" data-spell-section="8" data-rows="7" style="left: 67.2%; top: 61.1%; width: 31.2%; height: 14.4%;"><div class="spell-slot-count" data-field="8环法术位" data-spell-slot="8"></div></div>
+        <div class="spell-section" data-spell-section="9" data-rows="7" style="left: 67.2%; top: 77.5%; width: 31.2%; height: 14.4%;"><div class="spell-slot-count" data-field="9环法术位" data-spell-slot="9"></div></div>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const toggle = document.getElementById("toggleHelpers");
+    const upload = document.getElementById("jsonUpload");
+    const exportJsonButton = document.getElementById("exportJson");
+    const clearDataButton = document.getElementById("clearData");
+    const statusText = document.getElementById("statusText");
+
+    const abilityKeys = ["str", "dex", "con", "int", "wis", "cha"];
+    const skillNames = ["运动", "特技", "巧手", "隐匿", "调查", "奥秘", "历史", "自然", "宗教", "察觉", "洞悉", "驯兽", "医药", "求生", "游说", "欺瞒", "威吓", "表演"];
+
+    buildSpellRows();
+    enableInlineEditing();
+    ensureStateKeys();
+
+    toggle.addEventListener("click", () => {
+      document.body.classList.toggle("hide-helpers");
+      toggle.textContent = document.body.classList.contains("hide-helpers") ? "显示定位层" : "隐藏定位层";
+    });
+
+    clearDataButton.addEventListener("click", () => {
+      clearFilledData();
+      statusText.textContent = "已清空填充";
+    });
+
+    exportJsonButton.addEventListener("click", () => {
+      exportCurrentState();
+    });
+
+    upload.addEventListener("change", async (event) => {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (isOverlayBackup(data)) {
+          applyOverlayBackup(data);
+          statusText.textContent = `已恢复备份：${file.name}`;
+        } else {
+          renderCharacter(data);
+          statusText.textContent = `已导入角色：${file.name}`;
+        }
+      } catch (error) {
+        console.error(error);
+        statusText.textContent = "JSON 解析失败";
+        alert("JSON 解析失败：请确认上传的是有效的角色 JSON 文件。");
+      }
+    });
+
+    function pick(source, paths, fallback = "") {
+      for (const path of paths) {
+        const value = path.split(".").reduce((acc, key) => {
+          if (acc === undefined || acc === null) return undefined;
+          return acc[key];
+        }, source);
+        if (value !== undefined && value !== null && value !== "") return value;
+      }
+      return fallback;
+    }
+
+    function compactJoin(parts, separator = "-") {
+      return parts.filter((item) => item !== undefined && item !== null && item !== "").join(separator);
+    }
+
+    function formatBonus(value) {
+      if (value === undefined || value === null || value === "") return "";
+      const num = Number(value);
+      if (Number.isNaN(num)) return String(value);
+      return num > 0 ? `+${num}` : String(num);
+    }
+
+    function setSlot(selector, value) {
+      const element = document.querySelector(selector);
+      if (!element) return;
+      const text = value === undefined || value === null ? "" : String(value);
+      element.textContent = text;
+      element.classList.toggle("has-value", text.trim() !== "");
+    }
+
+    function clearFilledData() {
+      document.querySelectorAll(".has-value").forEach((element) => {
+        element.textContent = "";
+        element.classList.remove("has-value");
+      });
+      document.querySelectorAll(".prof-dot.filled-dot").forEach((element) => {
+        element.classList.remove("filled-dot");
+      });
+    }
+
+    function getEditableFields() {
+      return Array.from(document.querySelectorAll(".slot, .spell-row, .spell-slot-count"));
+    }
+
+    function getStateDots() {
+      return Array.from(document.querySelectorAll(".prof-dot"));
+    }
+
+    function ensureStateKeys() {
+      getEditableFields().forEach((element, index) => {
+        if (!element.dataset.stateKey) element.dataset.stateKey = `field-${index}`;
+      });
+      getStateDots().forEach((element, index) => {
+        if (!element.dataset.stateKey) element.dataset.stateKey = `dot-${index}`;
+      });
+    }
+
+    function isOverlayBackup(data) {
+      return data && data.schema === "dnd-character-sheet-overlay/v1" && Array.isArray(data.fields);
+    }
+
+    function collectOverlayState() {
+      ensureStateKeys();
+      return {
+        schema: "dnd-character-sheet-overlay/v1",
+        template: "dnd-character-a4-prototype-v2",
+        exportedAt: new Date().toISOString(),
+        fields: getEditableFields().map((element) => ({
+          key: element.dataset.stateKey,
+          text: element.textContent,
+          hasValue: element.classList.contains("has-value") || element.textContent.trim() !== ""
+        })),
+        dots: getStateDots().map((element) => ({
+          key: element.dataset.stateKey,
+          filled: element.classList.contains("filled-dot")
+        }))
+      };
+    }
+
+    function exportCurrentState() {
+      const state = collectOverlayState();
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+      const link = document.createElement("a");
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      link.href = URL.createObjectURL(blob);
+      link.download = `dnd-character-sheet-backup-${timestamp}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(link.href);
+      statusText.textContent = "已导出当前编辑 JSON";
+    }
+
+    function applyOverlayBackup(data) {
+      clearFilledData();
+      ensureStateKeys();
+      const fieldMap = new Map(data.fields.map((item) => [item.key, item]));
+      getEditableFields().forEach((element) => {
+        const item = fieldMap.get(element.dataset.stateKey);
+        if (!item) return;
+        element.textContent = item.text || "";
+        element.classList.toggle("has-value", Boolean(item.hasValue) || element.textContent.trim() !== "");
+      });
+      const dotMap = new Map((data.dots || []).map((item) => [item.key, item]));
+      getStateDots().forEach((element) => {
+        const item = dotMap.get(element.dataset.stateKey);
+        element.classList.toggle("filled-dot", Boolean(item && item.filled));
+      });
+    }
+
+    function syncEditableState(element) {
+      element.classList.toggle("has-value", element.textContent.trim() !== "");
+    }
+
+    function insertPlainTextAtCursor(text) {
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) return;
+      const range = selection.getRangeAt(0);
+      range.deleteContents();
+      const textNode = document.createTextNode(text);
+      range.insertNode(textNode);
+      range.setStartAfter(textNode);
+      range.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+
+    function enableInlineEditing(root = document) {
+      root.querySelectorAll(".slot, .spell-row, .spell-slot-count").forEach((element) => {
+        if (element.dataset.editableReady === "true") return;
+        element.dataset.editableReady = "true";
+        element.setAttribute("contenteditable", "plaintext-only");
+        element.setAttribute("spellcheck", "false");
+        element.classList.add("editable-field");
+        element.addEventListener("keydown", (event) => {
+          if (event.key !== "Enter" || event.isComposing) return;
+          event.preventDefault();
+          insertPlainTextAtCursor("\n");
+          syncEditableState(element);
+        });
+        element.addEventListener("input", () => syncEditableState(element));
+        element.addEventListener("blur", () => syncEditableState(element));
+        element.addEventListener("paste", (event) => {
+          event.preventDefault();
+          const text = (event.clipboardData || window.clipboardData).getData("text/plain");
+          insertPlainTextAtCursor(text);
+          syncEditableState(element);
+        });
+      });
+    }
+
+    function formatClasses(data) {
+      const classes = pick(data, ["classes", "exports.embedded_json.classes"], []);
+      if (!Array.isArray(classes)) return "";
+      return classes
+        .filter((item) => item && item.name)
+        .map((item) => {
+          const career = compactJoin([item.name, item.subclass || item.sub], "-");
+          const level = item.level !== undefined && item.level !== null && item.level !== "" ? `Lv.${item.level}` : "";
+          return compactJoin([career, level], " ");
+        })
+        .join(" / ");
+    }
+
+    function formatSpellClass(data) {
+      const ability = pick(data, ["spellcasting.spellcasting_ability", "spellcasting_ability"]);
+      if (!ability) return "";
+      const classes = pick(data, ["classes", "exports.embedded_json.classes"], []);
+      if (!Array.isArray(classes)) return "";
+      return classes
+        .filter((item) => item && item.name)
+        .map((item) => item.name)
+        .join(" / ");
+    }
+
+    function formatRace(data) {
+      const race = pick(data, ["identity.race", "race"], null);
+      if (race && typeof race === "object") return compactJoin([race.name, race.subrace], "-");
+      if (race) return String(race);
+      const raceName = pick(data, ["exports.embedded_json.identity.race", "identity.race.name", "race.name"], "");
+      const subrace = pick(data, ["exports.embedded_json.identity.subrace", "identity.race.subrace", "race.subrace"], "");
+      return compactJoin([raceName, subrace], "-");
+    }
+
+    function formatWeaponDamage(weapon) {
+      if (!weapon) return "";
+      const damage = weapon.damage || "";
+      const type = weapon.damage_type || weapon.dmg_type || "";
+      return compactJoin([damage, type], " ");
+    }
+
+    function shouldSkipFeatureInMain(feature) {
+      const name = feature && feature.name ? String(feature.name) : "";
+      return ["属性值加成", "武器", "语言"].some((keyword) => name.includes(keyword));
+    }
+
+    function getAllFeatures(data) {
+      const classFeatures = pick(data, ["features.class_features"], []);
+      const raceFeatures = pick(data, ["features.race_features"], []);
+      const all = [];
+      if (Array.isArray(classFeatures)) all.push(...classFeatures);
+      if (Array.isArray(raceFeatures)) all.push(...raceFeatures);
+      return all;
+    }
+
+    function formatFeatures(data) {
+      const classFeatures = pick(data, ["features.class_features"], []);
+      const raceFeatures = pick(data, ["features.race_features"], []);
+      const lines = [];
+
+      if (Array.isArray(classFeatures) && classFeatures.length) {
+        const visibleClassFeatures = classFeatures.filter((feature) => Number(feature && feature.level) !== 1 && !shouldSkipFeatureInMain(feature));
+        if (visibleClassFeatures.length) {
+          lines.push("【职业特性】");
+          visibleClassFeatures.forEach((feature) => {
+            if (!feature || !feature.name) return;
+            const level = feature.level ? `Lv.${feature.level} ` : "";
+            const description = feature.description ? String(feature.description).replace(/\n+/g, " ") : "";
+            lines.push(`${level}${feature.name}：${description}`);
+          });
+        }
+      }
+
+      if (Array.isArray(raceFeatures) && raceFeatures.length) {
+        const visibleRaceFeatures = raceFeatures.filter((feature) => !shouldSkipFeatureInMain(feature));
+        if (visibleRaceFeatures.length) {
+          lines.push("【种族特性】");
+          visibleRaceFeatures.forEach((feature) => {
+            if (!feature || !feature.name) return;
+            const description = feature.description ? String(feature.description).replace(/\n+/g, " ") : "";
+            lines.push(`${feature.name}：${description}`);
+          });
+        }
+      }
+
+      return lines.join("\n");
+    }
+
+    function formatOtherProficiencies(data) {
+      const languages = pick(data, ["identity.languages", "languages"], []);
+      const tools = pick(data, ["identity.tool_proficiencies", "tool_proficiencies"], []);
+      const weaponDescriptions = getAllFeatures(data)
+        .filter((feature) => feature && feature.description && String(feature.description).includes("武器熟练"))
+        .map((feature) => String(feature.description).replace(/\n+/g, " ").trim())
+        .filter(Boolean);
+
+      const lines = [];
+      lines.push(`语言：${Array.isArray(languages) ? languages.join(",") : languages || ""}`);
+      const toolText = Array.isArray(tools) ? (tools.length ? tools.join(",") : "无") : (tools || "无");
+      lines.push(`工具：${toolText}`);
+      if (weaponDescriptions.length) lines.push(`武器：${weaponDescriptions.join("；")}`);
+      return lines.join("\n");
+    }
+
+    function formatPersonality(data) {
+      const personality = pick(data, ["background.personality", "personality"]);
+      const traits = pick(data, ["background.traits", "traits"]);
+      return [personality, traits]
+        .filter((item) => item !== undefined && item !== null && String(item).trim() !== "")
+        .join("\n");
+    }
+
+    function buildSpellRows() {
+      document.querySelectorAll("[data-spell-section]").forEach((section) => {
+        if (section.querySelector(".spell-list")) return;
+        const level = section.getAttribute("data-spell-section");
+        const rows = Number(section.getAttribute("data-rows") || 0);
+        if (level !== "0") section.classList.add("has-slot");
+        const list = document.createElement("div");
+        list.className = "spell-list";
+        for (let index = 0; index < rows; index += 1) {
+          const row = document.createElement("div");
+          row.className = "spell-row";
+          if (level === "0") {
+            row.dataset.cantripIndex = String(index);
+            row.dataset.field = `戏法${index + 1}`;
+          } else {
+            row.dataset.spellLevel = level;
+            row.dataset.spellIndex = String(index);
+            row.dataset.field = `${level}环法术${index + 1}`;
+          }
+          list.appendChild(row);
+        }
+        section.appendChild(list);
+      });
+    }
+
+    function formatSpell(spell) {
+      if (!spell || !spell.name) return "";
+      const meta = spell.meta || {};
+      const details = [meta.components, meta.range, meta.casting_time, meta.school]
+        .filter((item) => item !== undefined && item !== null && item !== "")
+        .join("，");
+      return details ? `${spell.name}(${details})` : spell.name;
+    }
+
+    function renderSpellSlots(data) {
+      const slots = pick(data, ["spellcasting.spell_slots", "spell_slots", "exports.embedded_json.spell_slots"], {});
+      document.querySelectorAll("[data-spell-slot]").forEach((element) => {
+        const level = element.getAttribute("data-spell-slot");
+        const slot = slots && slots[level];
+        const value = slot && slot.max !== undefined && slot.max !== null && slot.max !== 0 ? slot.max : "";
+        element.textContent = value;
+        element.classList.toggle("has-value", value !== "");
+      });
+    }
+
+    const spellMeasureCanvas = document.createElement("canvas");
+    const spellMeasureContext = spellMeasureCanvas.getContext("2d");
+
+    function getRowTextWidth(row, text) {
+      const style = window.getComputedStyle(row);
+      spellMeasureContext.font = `${style.fontStyle} ${style.fontVariant} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      return spellMeasureContext.measureText(text).width;
+    }
+
+    function getRowAvailableWidth(row) {
+      const style = window.getComputedStyle(row);
+      const padding = parseFloat(style.paddingLeft || 0) + parseFloat(style.paddingRight || 0);
+      return Math.max(1, row.getBoundingClientRect().width - padding - 2);
+    }
+
+    function takeOneLineChunk(text, row) {
+      const normalized = String(text || "").replace(/\s+/g, " ").trim();
+      if (!normalized) return { chunk: "", rest: "" };
+      const maxWidth = getRowAvailableWidth(row);
+      if (getRowTextWidth(row, normalized) <= maxWidth) return { chunk: normalized, rest: "" };
+
+      let low = 1;
+      let high = normalized.length;
+      let best = 1;
+      while (low <= high) {
+        const mid = Math.floor((low + high) / 2);
+        const sample = normalized.slice(0, mid);
+        if (getRowTextWidth(row, sample) <= maxWidth) {
+          best = mid;
+          low = mid + 1;
+        } else {
+          high = mid - 1;
+        }
+      }
+
+      const chunk = normalized.slice(0, best);
+      const rest = normalized.slice(best).trimStart();
+      return { chunk, rest };
+    }
+
+    function clearRows(rows) {
+      rows.forEach((row) => {
+        row.textContent = "";
+        row.classList.remove("has-value");
+      });
+    }
+
+    function fillSpellRowsWithOverflow(rows, spells) {
+      clearRows(rows);
+      let rowIndex = 0;
+      (Array.isArray(spells) ? spells : []).forEach((spell) => {
+        let remaining = formatSpell(spell);
+        while (remaining && rowIndex < rows.length) {
+          const row = rows[rowIndex];
+          const result = takeOneLineChunk(remaining, row);
+          if (!result.chunk) break;
+          row.textContent = result.chunk;
+          row.classList.add("has-value");
+          remaining = result.rest;
+          rowIndex += 1;
+        }
+      });
+    }
+
+    function renderSpellList(data) {
+      const cantrips = pick(data, ["spellcasting.cantrips_known", "cantrips_known"], []);
+      const cantripRows = Array.from(document.querySelectorAll("[data-cantrip-index]"))
+        .sort((a, b) => Number(a.dataset.cantripIndex) - Number(b.dataset.cantripIndex));
+      fillSpellRowsWithOverflow(cantripRows, cantrips);
+
+      const prepared = pick(data, ["spellcasting.prepared", "prepared"], []);
+      const byLevel = new Map();
+      if (Array.isArray(prepared)) {
+        prepared.forEach((spell) => {
+          const level = String(spell && spell.level);
+          if (!byLevel.has(level)) byLevel.set(level, []);
+          byLevel.get(level).push(spell);
+        });
+      }
+
+      for (let level = 1; level <= 9; level += 1) {
+        const rows = Array.from(document.querySelectorAll(`[data-spell-level="${level}"]`))
+          .sort((a, b) => Number(a.dataset.spellIndex) - Number(b.dataset.spellIndex));
+        fillSpellRowsWithOverflow(rows, byLevel.get(String(level)) || []);
+      }
+    }
+
+    function getAbilityData(data, key) {
+      return pick(data, [`abilities.${key}`, `exports.embedded_json.abilities.${key}`], null);
+    }
+
+    function getSaveValue(ability) {
+      if (!ability) return "";
+      if (ability.save && typeof ability.save === "object") return formatBonus(ability.save.bonus);
+      return formatBonus(ability.save);
+    }
+
+    function isSaveProficient(ability) {
+      if (!ability) return false;
+      if (ability.save && typeof ability.save === "object") return Boolean(ability.save.proficient);
+      return ability.save_prof === "O" || ability.save_prof === true;
+    }
+
+    function renderSaves(data) {
+      abilityKeys.forEach((key) => {
+        const ability = getAbilityData(data, key);
+        const valueSlot = document.querySelector(`[data-save-score="${key}"]`);
+        const dot = document.querySelector(`[data-save-prof="${key}"]`);
+        if (valueSlot) {
+          const value = getSaveValue(ability);
+          valueSlot.textContent = value;
+          valueSlot.classList.toggle("has-value", value !== "");
+        }
+        if (dot) dot.classList.toggle("filled-dot", isSaveProficient(ability));
+      });
+    }
+
+    function formatEquipment(data) {
+      const containers = pick(data, ["inventory.containers"], []);
+      const looseItems = pick(data, ["inventory.items"], []);
+      const items = [];
+
+      if (Array.isArray(containers)) {
+        containers.forEach((container) => {
+          if (container && Array.isArray(container.items)) items.push(...container.items);
+        });
+      }
+      if (Array.isArray(looseItems)) items.push(...looseItems);
+
+      return items
+        .filter((item) => item && item.name)
+        .map((item) => {
+          const weight = item.weight !== undefined && item.weight !== null && item.weight !== "" ? `${item.weight}lb` : "?lb";
+          const description = item.description !== undefined && item.description !== null ? String(item.description) : "";
+          const shouldExpandDescription = ["套装", "套组", "工具"].some((keyword) => String(item.name).includes(keyword));
+          if (shouldExpandDescription && description && description !== "-") return `${item.name}(${weight}):${description}`;
+          return `${item.name}(${weight})`;
+        })
+        .join("\n");
+    }
+
+    function renderSkills(data) {
+      const skills = pick(data, ["skills"], []);
+      const byName = new Map(Array.isArray(skills) ? skills.map((skill) => [skill.name, skill]) : []);
+
+      skillNames.forEach((name) => {
+        const skill = byName.get(name);
+        const totalSlot = document.querySelector(`[data-skill-total="${name}"]`);
+        const dot = document.querySelector(`[data-skill-prof="${name}"]`);
+        if (totalSlot) {
+          const total = skill ? formatBonus(skill.total) : "";
+          totalSlot.textContent = total;
+          totalSlot.classList.toggle("has-value", total !== "");
+        }
+        if (dot) {
+          const proficiency = skill ? skill.proficiency : "none";
+          const filled = proficiency === "proficient" || proficiency === "expertise";
+          dot.classList.toggle("filled-dot", filled);
+        }
+      });
+    }
+
+    function renderWeapons(data) {
+      const weapons = pick(data, ["combat.weapons", "exports.embedded_json.combat.weapons"], []);
+      document.querySelectorAll("[data-weapon]").forEach((slot) => {
+        const index = Number(slot.getAttribute("data-weapon"));
+        const field = slot.getAttribute("data-weapon-field");
+        const weapon = Array.isArray(weapons) ? weapons[index] : null;
+        let value = "";
+        if (weapon) {
+          if (field === "name") value = weapon.name || "";
+          if (field === "attack") value = weapon.attack_bonus || weapon.atk || "";
+          if (field === "damage") value = formatWeaponDamage(weapon);
+        }
+        slot.textContent = value;
+        slot.classList.toggle("has-value", value !== "");
+      });
+    }
+
+    function renderCharacter(data) {
+      clearFilledData();
+
+      setSlot("[data-fill='characterName']", pick(data, ["identity.display_name", "display_name", "exports.embedded_json.identity.display_name", "exports.embedded_json.identity.character_name"]));
+      setSlot("[data-fill='classes']", formatClasses(data));
+      setSlot("[data-fill='background']", pick(data, ["background.background_name", "background_name"]));
+      setSlot("[data-fill='player']", pick(data, ["identity.player", "player", "exports.embedded_json.identity.player"]));
+      setSlot("[data-fill='race']", formatRace(data));
+      setSlot("[data-fill='alignment']", pick(data, ["identity.alignment", "alignment", "exports.embedded_json.identity.alignment"]));
+
+      abilityKeys.forEach((key) => {
+        setSlot(`[data-fill='ability.${key}']`, pick(data, [`abilities.${key}.total`, `abilities.${key}.score`, `exports.embedded_json.abilities.${key}.score`]));
+      });
+
+      setSlot("[data-fill='profBonus']", formatBonus(pick(data, ["core_stats.proficiency_bonus", "prof_bonus", "exports.embedded_json.core_stats.prof_bonus"])));
+      setSlot("[data-fill='passivePerception']", pick(data, ["core_stats.passive_perception", "passive_perception", "exports.embedded_json.core_stats.passive_perception"]));
+      setSlot("[data-fill='ac']", pick(data, ["core_stats.ac", "ac", "exports.embedded_json.core_stats.ac"]));
+      setSlot("[data-fill='initiative']", formatBonus(pick(data, ["core_stats.initiative", "initiative", "exports.embedded_json.core_stats.initiative"])));
+      setSlot("[data-fill='speed']", pick(data, ["core_stats.speed", "speed", "exports.embedded_json.core_stats.speed"]));
+      setSlot("[data-fill='hpMax']", pick(data, ["core_stats.hp.max", "hp.max", "exports.embedded_json.core_stats.hp.max"]));
+      setSlot("[data-fill='hitDiceMax']", pick(data, ["core_stats.hit_dice.max", "hd.max", "exports.embedded_json.core_stats.hd.max"]));
+      setSlot("[data-fill='otherProficiencies']", formatOtherProficiencies(data));
+      setSlot("[data-fill='gp']", pick(data, ["inventory.currency.total_gp_raw", "exports.embedded_json.currency.gp"]));
+      setSlot("[data-fill='equipment']", formatEquipment(data));
+      setSlot("[data-fill='personality']", formatPersonality(data));
+      setSlot("[data-fill='ideals']", pick(data, ["background.ideals", "ideals"]));
+      setSlot("[data-fill='bonds']", pick(data, ["background.bonds", "bonds"]));
+      setSlot("[data-fill='flaws']", pick(data, ["background.flaws", "flaws"]));
+      setSlot("[data-fill='features']", formatFeatures(data));
+
+      setSlot("[data-fill='spellClass']", formatSpellClass(data));
+      setSlot("[data-fill='spellAbility']", pick(data, ["spellcasting.spellcasting_ability", "spellcasting_ability"]));
+      setSlot("[data-fill='spellSaveDC']", pick(data, ["spellcasting.save_dc", "save_dc"]));
+      setSlot("[data-fill='spellAttackBonus']", pick(data, ["spellcasting.attack_bonus", "attack_bonus"]));
+
+      renderSaves(data);
+      renderSkills(data);
+      renderWeapons(data);
+      renderSpellSlots(data);
+      renderSpellList(data);
+    }
+  </script>
+</body>
+</html>
